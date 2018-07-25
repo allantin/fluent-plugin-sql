@@ -55,6 +55,7 @@ module Fluent::Plugin
       config_param :table, :string
       config_param :tag, :string, default: nil
       config_param :update_column, :string, default: nil
+      config_param :update_column2, :string, default: nil
       config_param :time_column, :string, default: nil
       config_param :primary_key, :string, default: nil
 
@@ -110,9 +111,18 @@ module Fluent::Plugin
       def emit_next_records(last_record, limit)
         relation = @model
         if last_record && last_update_value = last_record[@update_column]
-          relation = relation.where("#{@update_column} > ?", last_update_value)
+          if @table == "BPASessionLog_NonUnicode"
+            last_update_value2 = last_record[@update_column2]
+            relation = relation.where("(#{@update_column} = ? and #{@update_column2} > ?) OR (#{@update_column} > ?)", last_update_value, last_update_value2, last_update_value)
+          else
+            relation = relation.where("#{@update_column} > ?", last_update_value)
+          end
         end
-        relation = relation.order("#{@update_column} ASC")
+        if @table == "BPASessionLog_NonUnicode"
+          relation = relation.order("#{@update_column} ASC, #{@update_column2} ASC")
+        else
+          relation = relation.order("#{@update_column} ASC")
+        end
         relation = relation.limit(limit) if limit > 0
 
         now = Fluent::Engine.now
